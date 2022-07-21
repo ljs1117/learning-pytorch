@@ -36,12 +36,12 @@ optimizer_SGD = torch.optim.SGD(model.parameters(), lr=0.01)
 # 可使用不同的优化器，例如Adam
 #optimizer_Adam = torch.optim.Adam(model.parameters(), lr=0.01)
 
-mse_list = []
+loss_list = []
 for epoch in range(100):
     y_pred = model(x_data)
     loss = criterion(y_pred, y_data)
     print(epoch, loss.item())
-    mse_list.append(loss.item())
+    loss_list.append(loss.item())
 
     optimizer_SGD.zero_grad()
     loss.backward()
@@ -55,8 +55,8 @@ x_test = torch.tensor([[4.0]])
 y_test = model(x_test)
 print('y_pred = ', y_test.data.item())
 
-plt.plot(range(1, 101), mse_list)
+plt.plot(range(1, 101), loss_list)
 plt.xlabel("epoch")
-plt.ylabel("mse")
+plt.ylabel("loss")
 plt.title("SGD")
 plt.show()
