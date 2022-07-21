@@ -1,3 +1,4 @@
+# https://www.bilibili.com/video/BV1Y7411d7Ys?p=6 第六讲例程
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
