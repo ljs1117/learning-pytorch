@@ -1,5 +1,4 @@
 # https://www.bilibili.com/video/BV1Y7411d7Ys?p=7 第七讲例程
-from turtle import forward
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
