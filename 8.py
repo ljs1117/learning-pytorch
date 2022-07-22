@@ -66,7 +66,7 @@ optimizer_Adam = torch.optim.Adam(model.parameters(), lr=0.01)
 if __name__ == '__main__':
     loss_list = []
     for epoch in range(100):
-        for i, (inputs, labels) in enumerate(train_loader, 0):
+        for i, (inputs, labels) in enumerate(train_loader, 0):  # train_loader完成shuffle和loader
             # enumerate(,0)索引从0开始
             y_pred = model(inputs)
             loss = criterion(y_pred, labels)
