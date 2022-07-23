@@ -1,5 +1,4 @@
-
-# https://www.bilibili.com/video/BV1Y7411d7Ys?p=11 第11讲例程1
+# https://www.bilibili.com/video/BV1Y7411d7Ys?p=11 第11讲例程2
 import torch
 from torchvision import transforms  # 用于数据处理
 from torchvision import datasets
@@ -24,57 +23,42 @@ test_dataset = datasets.MNIST(
 test_loader = DataLoader(
     test_dataset, batch_size=batch_size, shuffle=False, num_workers=2)
 
-# 卷积层超参数选择困难(kernel_size)
-# Inception Module优点：自动找到最适合的卷积核(权重大)
-# 1x1卷积层：融合不同通道同一位置的信息，可改变通道数减少计算量
+# ResidualBlock为了解决梯度消失的问题
+# 要求输入和输出的维度相同，且需要先做加法再激活
 
 
-class InceptionA(torch.nn.Module):
-    def __init__(self, in_channels):
-        super(InceptionA, self).__init__()
-        self.branch_pool = torch.nn.Conv2d(in_channels, 24, kernel_size=1)
-        # kernel_size=1不需要padding
-        self.branch1x1 = torch.nn.Conv2d(in_channels, 16, kernel_size=1)
-        self.branch5x5 = torch.nn.Conv2d(16, 24, kernel_size=5, padding=2)
-        # 默认padding_mode='zeros'
-        self.branch3x3_1 = torch.nn.Conv2d(16, 24, kernel_size=3, padding=1)
-        self.branch3x3_2 = torch.nn.Conv2d(24, 24, kernel_size=3, padding=1)
+class ResidualBlock(torch.nn.Module):
+    def __init__(self, channels):
+        super(ResidualBlock, self).__init__()
+        self.channels = channels
+        self.conv = torch.nn.Conv2d(
+            channels, channels, kernel_size=3, padding=1)
 
     def forward(self, x):
-        branch_pool = F.avg_pool2d(x, kernel_size=3, stride=1, padding=1)
-        branch_pool = self.branch_pool(branch_pool)
-        branch1x1 = self.branch1x1(x)
-        branch5x5 = self.branch1x1(x)
-        branch5x5 = self.branch5x5(branch5x5)
-        branch3x3 = self.branch1x1(x)
-        branch3x3 = self.branch3x3_1(branch3x3)
-        branch3x3 = self.branch3x3_2(branch3x3)
-
-        outputs = [branch1x1, branch5x5, branch3x3, branch_pool]
-        return torch.cat(outputs, dim=1)
-        # outputs维度[b,c,w,h],dim=1,则按channels拼接
+        y = F.relu(self.conv(x))
+        y = self.conv(y)
+        return F.relu(x+y)
 
 
 class Net(torch.nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.conv1 = torch.nn.Conv2d(1, 10, kernel_size=5)
-        self.conv2 = torch.nn.Conv2d(88, 20, kernel_size=5)
+        self.conv1 = torch.nn.Conv2d(1, 16, kernel_size=5)
+        self.conv2 = torch.nn.Conv2d(16, 32, kernel_size=5)
 
-        self.incep1 = InceptionA(in_channels=10)
-        self.incep2 = InceptionA(in_channels=20)
+        self.rb1 = ResidualBlock(16)
+        self.rb2 = ResidualBlock(32)
 
         self.maxpool = torch.nn.MaxPool2d(2)
-        self.fc = torch.nn.Linear(1408, 10)
-        # fc的维度可以使用程序计算
+        self.fc = torch.nn.Linear(512, 10)
 
     def forward(self, x):
         # x为(N=64,1,28,28)
         batch_size = x.size(0)
-        x = F.relu(self.maxpool(self.conv1(x)))
-        x = self.incep1(x)
-        x = F.relu(self.maxpool(self.conv2(x)))
-        x = self.incep2(x)
+        x = self.maxpool(F.relu(self.conv1(x)))
+        x = self.rb1(x)
+        x = self.maxpool(F.relu(self.conv2(x)))
+        x = self.rb2(x)
         x = x.view(batch_size, -1)
         # -1可自动计算为320
         x = self.fc(x)
