@@ -1,4 +1,4 @@
-# https://www.bilibili.com/video/BV1Y7411d7Ys?p=9 第9讲例程
+# https://www.bilibili.com/video/BV1Y7411d7Ys?p=10 第十讲例程
 import torch
 from torchvision import transforms  # 用于数据处理
 from torchvision import datasets
@@ -27,24 +27,33 @@ test_loader = DataLoader(
 class Net(torch.nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.linear1 = torch.nn.Linear(784, 512)
-        self.linear2 = torch.nn.Linear(512, 256)
-        self.linear3 = torch.nn.Linear(256, 128)
-        self.linear4 = torch.nn.Linear(128, 64)
-        self.linear5 = torch.nn.Linear(64, 10)
+        self.conv1 = torch.nn.Conv2d(1, 10, kernel_size=5)
+        # 1为input_channel,10为output_channel
+        # bias (bool, optional) – If , adds a learnable bias to the output. Default: True
+        self.conv2 = torch.nn.Conv2d(10, 20, kernel_size=5)
+        self.linear = torch.nn.Linear(320, 10)
+        self.pooling = torch.nn.MaxPool2d(2)
+        # 池化通道数不变
+        # stride – the stride of the window. Default value is kernel_size
 
     def forward(self, x):
-        x = x.view(-1, 784)  # 转换成矩阵，N个1*28*28的图片转化为N*784的矩阵
-        x = F.relu(self.linear1(x))
-        x = F.relu(self.linear2(x))
-        x = F.relu(self.linear3(x))
-        x = F.relu(self.linear4(x))
+        # x为(N=64,1,28,28)
+        batch_size = x.size(0)
+        x = F.relu(self.pooling(self.conv1(x)))
+        x = F.relu(self.pooling(self.conv2(x)))
+        x = x.view(batch_size, -1)
+        # -1可自动计算为320
+        x = self.linear(x)
 
-        return self.linear5(x)
+        return x
         # 最后一层不激活，SoftMax含在CrossEntropyLoss中
 
 
 model = Net()
+# 使用cuda，则模型和对应的计算数据均要放到cuda上
+#device = torch.device("cuda：0" if torch.cuda.is_available() else "cpu")
+# model.to(device)
+
 criterion = torch.nn.CrossEntropyLoss()
 # 默认reduction="mean"
 optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.5)
@@ -56,6 +65,9 @@ optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.5)
 def train(epoch):
     running_loss = 0.0
     for i, (inputs, labels) in enumerate(train_loader, 0):
+
+        # cuda版本
+        #inputs, labels = inputs.to(device), labels.to(device)
         outputs = model(inputs)
         loss = criterion(outputs, labels)
 
@@ -75,6 +87,9 @@ def test():
     total = 0
     with torch.no_grad():
         for (inputs, labels) in test_loader:
+
+            # cuda版本
+            #inputs, labels = inputs.to(device), labels.to(device)
             outputs = model(inputs)
             prediction = torch.max(outputs.data, dim=1)[1]
             # dim:0表示列，1表示行
